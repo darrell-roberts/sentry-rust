@@ -13,6 +13,7 @@ members = [
     "sentry-opentelemetry",
     "sentry-panic",
     "sentry-slog",
+    "sentry-time",
     "sentry-tower",
     "sentry-tracing",
     "sentry-types",
@@ -43,6 +44,7 @@ backtrace = "0.3.44"
 bitflags = "2.9.4"
 bytes = "1.11.1"
 cfg_aliases = "0.2.1"
+chrono = "0.4"
 criterion = "0.5"
 curl = "0.4.25"
 debugid = "0.8.0"
@@ -86,6 +88,7 @@ sentry-minidump = { version = "0.49.6", path = "sentry-minidump", default-featur
 sentry-opentelemetry = { version = "0.49.6", path = "sentry-opentelemetry", default-features = false }
 sentry-panic = { version = "0.49.6", path = "sentry-panic", default-features = false }
 sentry-slog = { version = "0.49.6", path = "sentry-slog", default-features = false }
+sentry-time = { version = "0.49.6", path = "sentry-time" }
 sentry-tower = { version = "0.49.6", path = "sentry-tower", default-features = false }
 sentry-tracing = { version = "0.49.6", path = "sentry-tracing", default-features = false }
 sentry-types = { version = "0.49.6", path = "sentry-types", default-features = false, features = ["protocol"] }
