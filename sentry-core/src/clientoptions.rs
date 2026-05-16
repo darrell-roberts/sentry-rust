@@ -12,6 +12,9 @@ use crate::{Integration, IntoDsn, TransportFactory};
 /// Type alias for before event/breadcrumb handlers.
 pub type BeforeCallback<T> = Arc<dyn Fn(T) -> Option<T> + Send + Sync>;
 
+/// Type alias for override sample rate callback.
+pub type OverrideSamplingRateCallback = Arc<dyn Fn(&Event<'static>) -> bool + Send + Sync>;
+
 /// The Session Mode of the SDK.
 ///
 /// Depending on the use-case, the SDK can be set to two different session modes:
@@ -143,6 +146,10 @@ pub struct ClientOptions {
     pub before_send: Option<BeforeCallback<Event<'static>>>,
     /// Callback that is executed for each Breadcrumb being added.
     pub before_breadcrumb: Option<BeforeCallback<Breadcrumb>>,
+    /// Callback that is executed to see if sampling rate should be ignored.
+    /// This allows certain "high priority" events to always be sent irrespective of
+    /// the sampling rate.
+    pub override_sampling_rate: Option<OverrideSamplingRateCallback>,
     /// Callback that is executed for each Log being added.
     ///
     /// This callback has no effect unless the `logs` feature is enabled at compile-time, as the
@@ -312,6 +319,7 @@ impl Default for ClientOptions {
             max_request_body_size: MaxRequestBodySize::Medium,
             enable_logs: true,
             before_send_log: None,
+            override_sampling_rate: None,
         }
     }
 }

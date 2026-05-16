@@ -316,11 +316,16 @@ impl Client {
             scope.update_session_from_event(&event);
         }
 
-        if !self.sample_should_send(self.options.sample_rate) {
-            None
-        } else {
-            Some(event)
-        }
+        // Check if we have an override sampling rate function.
+        let override_sampling_rate = self
+            .options()
+            .override_sampling_rate
+            .as_ref()
+            .map(|f| f(&event))
+            .unwrap_or(false);
+
+        (override_sampling_rate || self.sample_should_send(self.options().sample_rate))
+            .then_some(event)
     }
 
     /// Returns the options of this client.
