@@ -101,7 +101,6 @@
 
 #![doc(html_favicon_url = "https://sentry-brand.storage.googleapis.com/favicon.ico")]
 #![doc(html_logo_url = "https://sentry-brand.storage.googleapis.com/sentry-glyph-black.png")]
-#![warn(missing_docs)]
 
 // macros; these need to be first to be used by other modules
 #[macro_use]
@@ -169,6 +168,9 @@ pub mod test;
 // public api from other crates
 #[doc(inline)]
 pub use sentry_types as types;
+
+#[doc(hidden)]
+pub use sentry_time;
 pub use sentry_types::protocol::v7 as protocol;
 pub use sentry_types::protocol::v7::{Breadcrumb, Envelope, Level, User};
 

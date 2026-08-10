@@ -1,6 +1,10 @@
 <p align="center">
   <a href="https://sentry.io/?utm_source=github&utm_medium=logo" target="_blank">
-    <img src="https://sentry-brand.storage.googleapis.com/sentry-wordmark-dark-280x84.png" alt="Sentry" width="280" height="84">
+    <picture>
+      <source srcset="https://sentry-brand.storage.googleapis.com/sentry-logo-white.png" media="(prefers-color-scheme: dark)" />
+      <source srcset="https://sentry-brand.storage.googleapis.com/sentry-wordmark-dark-280x84.png" media="(prefers-color-scheme: light), (prefers-color-scheme: no-preference)" />
+      <img src="https://sentry-brand.storage.googleapis.com/sentry-wordmark-dark-280x84.png" alt="Sentry" width="280">
+    </picture>
   </a>
 </p>
 
@@ -103,7 +107,7 @@ feature of the `sentry` crate instead of the `tower` feature.
 The created transaction will automatically use the request URI as its name.
 This is sometimes not desirable in case the request URI contains unique IDs
 or similar. In this case, users should manually override the transaction name
-in the request handler using the [`Scope::set_transaction`](https://docs.rs/sentry-tower/0.49.1/sentry_tower/sentry_core::Scope::set_transaction)
+in the request handler using the [`Scope::set_transaction`](https://docs.rs/sentry-tower/0.49.6/sentry_tower/sentry_core::Scope::set_transaction)
 method.
 
 When combining both layers, take care of the ordering of both. For example

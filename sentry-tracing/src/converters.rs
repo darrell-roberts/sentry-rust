@@ -6,7 +6,8 @@ use sentry_core::protocol::{Event, Exception, Mechanism, Value};
 use sentry_core::protocol::{Log, LogAttribute, LogLevel};
 use sentry_core::{event_from_error, Breadcrumb, Level, TransactionOrSpan};
 #[cfg(feature = "logs")]
-use std::time::SystemTime;
+use sentry_time::now_system_time;
+#[cfg(feature = "logs")]
 use tracing_core::field::{Field, Visit};
 use tracing_core::Subscriber;
 use tracing_subscriber::layer::Context;
@@ -198,13 +199,13 @@ impl Visit for FieldVisitor {
     }
 }
 
-/// Creates a [`Breadcrumb`] from a given [`tracing_core::Event`].
-pub fn breadcrumb_from_event<'context, S>(
+pub(crate) fn breadcrumb_from_event_impl<'context, S, C>(
     event: &tracing_core::Event,
-    ctx: impl Into<Option<&'context Context<'context, S>>>,
+    ctx: C,
 ) -> Breadcrumb
 where
     S: Subscriber + for<'a> LookupSpan<'a>,
+    C: Into<Option<&'context Context<'context, S>>>,
 {
     let (message, visitor) = extract_event_data_with_context(event, ctx.into(), true);
 
@@ -216,6 +217,25 @@ where
         data: visitor.json_values,
         ..Default::default()
     }
+}
+
+// TODO: When removing this function, rename `breadcrumb_from_event_impl` to `breadcrumb_from_event`.
+/// Creates a [`Breadcrumb`] from a given [`tracing_core::Event`].
+#[deprecated(
+    note = "Only useful for custom `SentryLayer::event_mapper` callbacks; that API is deprecated"
+)]
+#[expect(
+    clippy::impl_trait_in_params,
+    reason = "preserving the public helper signature"
+)]
+pub fn breadcrumb_from_event<'context, S>(
+    event: &tracing_core::Event,
+    ctx: impl Into<Option<&'context Context<'context, S>>>,
+) -> Breadcrumb
+where
+    S: Subscriber + for<'a> LookupSpan<'a>,
+{
+    breadcrumb_from_event_impl(event, ctx)
 }
 
 /// Convert `tracing` fields to the corresponding Sentry tags, removing them from `fields`.
@@ -277,13 +297,13 @@ fn contexts_from_event(
     context
 }
 
-/// Creates an [`Event`] (possibly carrying exceptions) from a given [`tracing_core::Event`].
-pub fn event_from_event<'context, S>(
+pub(crate) fn event_from_event_impl<'context, S, C>(
     event: &tracing_core::Event,
-    ctx: impl Into<Option<&'context Context<'context, S>>>,
+    ctx: C,
 ) -> Event<'static>
 where
     S: Subscriber + for<'a> LookupSpan<'a>,
+    C: Into<Option<&'context Context<'context, S>>>,
 {
     // Exception records in Sentry need a valid type, value and full stack trace to support
     // proper grouping and issue metadata generation. tracing_core::Record does not contain sufficient
@@ -347,14 +367,54 @@ where
     }
 }
 
-/// Creates a [`Log`] from a given [`tracing_core::Event`]
+// TODO: When removing this function, rename `event_from_event_impl` to `event_from_event`.
+/// Creates an [`Event`] (possibly carrying exceptions) from a given [`tracing_core::Event`].
+#[deprecated(
+    note = "Only useful for custom `SentryLayer::event_mapper` callbacks; that API is deprecated"
+)]
+#[expect(
+    clippy::impl_trait_in_params,
+    reason = "preserving the public helper signature"
+)]
+pub fn event_from_event<'context, S>(
+    event: &tracing_core::Event,
+    ctx: impl Into<Option<&'context Context<'context, S>>>,
+) -> Event<'static>
+where
+    S: Subscriber + for<'a> LookupSpan<'a>,
+{
+    event_from_event_impl(event, ctx)
+}
+
+// TODO: When removing this function, rename `log_from_event_impl` to `log_from_event`.
+/// Creates a [`Log`] from a given [`tracing_core::Event`].
+///
+/// If a context is provided, include available parent-span data in the returned log's attributes.
+/// See [`crate::LogLayer::enable_span_attributes`] for span-capture and filtering requirements.
 #[cfg(feature = "logs")]
+#[cfg_attr(doc_cfg, doc(cfg(feature = "logs")))]
+#[deprecated(
+    note = "Only useful for custom `SentryLayer::event_mapper` callbacks; that API is deprecated"
+)]
+#[expect(
+    clippy::impl_trait_in_params,
+    reason = "preserving the public helper signature"
+)]
 pub fn log_from_event<'context, S>(
     event: &tracing_core::Event,
     ctx: impl Into<Option<&'context Context<'context, S>>>,
 ) -> Log
 where
     S: Subscriber + for<'a> LookupSpan<'a>,
+{
+    log_from_event_impl(event, ctx)
+}
+
+#[cfg(feature = "logs")]
+pub(crate) fn log_from_event_impl<'context, S, C>(event: &tracing_core::Event, ctx: C) -> Log
+where
+    S: Subscriber + for<'a> LookupSpan<'a>,
+    C: Into<Option<&'context Context<'context, S>>>,
 {
     let (message, visitor) = extract_event_data_with_context(event, ctx.into(), true);
 
@@ -381,7 +441,7 @@ where
         level: level_to_log_level(event.metadata().level()),
         body: message.unwrap_or_default(),
         trace_id: None,
-        timestamp: SystemTime::now(),
+        timestamp: now_system_time(),
         severity_number: None,
         attributes,
     }

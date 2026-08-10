@@ -1,11 +1,80 @@
 # Changelog
 
+## Unreleased
+
+### Features
+
+- Added `override_sampling_rate` to `ClientOptions` to allow user defined function to override sampling rate when capturing an event. ([#1128](https://github.com/getsentry/sentry-rust/pull/1128)).
+
+## 0.49.6
+
+### Fixes
+
+- Preserve longer active rate limits when subsequent headers or 429 responses specify shorter delays ([#1410](https://github.com/getsentry/sentry-rust/pull/1410)).
+- [`Transport::flush`](https://docs.rs/sentry-core/0.49.6/sentry_core/trait.Transport.html#method.flush) on an `Arc`-wrapped transport now flushes the inner transport, instead of returning `true` immediately ([#1390](https://github.com/getsentry/sentry-rust/pull/1390)).
+
+### Deprecations
+
+- Deprecated the `log` and `uuid` features of `sentry-core`. These features are now no-ops, and will be removed in the next breaking release. Previously, these features enabled the optional `log` and `uuid` dependencies, which `sentry-core` did not use ([#1388](https://github.com/getsentry/sentry-rust/pull/1388)).
+- Deprecated the `serde_json` feature of `sentry`. This feature is now a no-op, and will be removed in the next breaking release. Previously, this feature enabled the optional `serde_json` dependency, which `sentry` did not use ([#1389](https://github.com/getsentry/sentry-rust/pull/1389)).
+
+## 0.49.5
+
+### Documentation
+
+- Added code examples to the [`ErrorLayer::enable_span_attributes`](https://docs.rs/sentry-tracing/0.49.5/sentry_tracing/struct.ErrorLayer.html#method.enable_span_attributes) and [`BreadcrumbLayer::enable_span_attributes`](https://docs.rs/sentry-tracing/0.49.5/sentry_tracing/struct.BreadcrumbLayer.html#method.enable_span_attributes) docs, which were missing from the 0.49.4 release ([#1373](https://github.com/getsentry/sentry-rust/pull/1373)).
+
+## 0.49.4
+
+### Minimum Supported Rust Version
+
+- Bump minimum supported Rust version to 1.89.0 ([#1365](https://github.com/getsentry/sentry-rust/pull/1365)).
+
+### Features
+
+- Redesigned [`sentry-tracing`](https://docs.rs/sentry-tracing/0.49.5/sentry_tracing/) around independently selectable [`SpanLayer`](https://docs.rs/sentry-tracing/0.49.5/sentry_tracing/struct.SpanLayer.html), [`LogLayer`](https://docs.rs/sentry-tracing/0.49.5/sentry_tracing/struct.LogLayer.html), [`ErrorLayer`](https://docs.rs/sentry-tracing/0.49.5/sentry_tracing/struct.ErrorLayer.html), and [`BreadcrumbLayer`](https://docs.rs/sentry-tracing/0.49.5/sentry_tracing/struct.BreadcrumbLayer.html). Most applications should use the span and log layers ([#1342](https://github.com/getsentry/sentry-rust/pull/1342)).
+
+### Fixes
+
+- The Actix and Tower integrations now set the `already_exists` span status on transactions for HTTP `409 Conflict` responses, instead of `invalid_argument` ([#1353](https://github.com/getsentry/sentry-rust/pull/1353)).
+
+### Deprecations
+
+- Deprecated [`sentry_tracing::layer()`](https://docs.rs/sentry-tracing/0.49.5/sentry_tracing/fn.layer.html) and [`SentryLayer`](https://docs.rs/sentry-tracing/0.49.5/sentry_tracing/struct.SentryLayer.html), along with their associated filtering and mapping types and helpers, in favor of independently selectable [`SpanLayer`](https://docs.rs/sentry-tracing/0.49.5/sentry_tracing/struct.SpanLayer.html), [`LogLayer`](https://docs.rs/sentry-tracing/0.49.5/sentry_tracing/struct.LogLayer.html), [`ErrorLayer`](https://docs.rs/sentry-tracing/0.49.5/sentry_tracing/struct.ErrorLayer.html), and [`BreadcrumbLayer`](https://docs.rs/sentry-tracing/0.49.5/sentry_tracing/struct.BreadcrumbLayer.html). A [migration guide](https://docs.rs/sentry-tracing/0.49.5/sentry_tracing/struct.SentryLayer.html) is available ([#1342](https://github.com/getsentry/sentry-rust/pull/1342), [#1348](https://github.com/getsentry/sentry-rust/pull/1348)).
+  - As this is a larger change, we would love to hear your feedback about the new API if you have trouble migrating. Please [open a GitHub issue](https://github.com/getsentry/sentry-rust/issues/new?template=02-improvement.yml), and we will help identify a solution.
+
+## 0.49.3
+
+### Features
+
+- Added the `sentry-minidump` integration, which captures native crashes as minidumps in a separate process and sends them to Sentry as attachments. Enable it with the `minidump` feature on `sentry`. Linux, macOS and Windows only ([#1315](https://github.com/getsentry/sentry-rust/pull/1315)).
+- Added a `transport_channel_capacity` option to [`ClientOptions`](https://docs.rs/sentry-core/0.49.3/sentry_core/struct.ClientOptions.html), making the transport's channel capacity configurable. The [`StdTransportThreadOptions::with_channel_capacity`](https://docs.rs/sentry/0.49.3/sentry/transports/struct.StdTransportThreadOptions.html#method.with_channel_capacity) and [`TokioTransportThreadOptions::with_channel_capacity`](https://docs.rs/sentry/0.49.3/sentry/transports/struct.TokioTransportThreadOptions.html#method.with_channel_capacity) methods provide the same configuration when constructing transport threads. When unset, each transport uses its own default (currently `30`), which is subject to change ([#1311](https://github.com/getsentry/sentry-rust/issues/1311)).
+- The Tower integration's [`SentryHttpLayer`](https://docs.rs/sentry-tower/0.49.3/sentry_tower/struct.SentryHttpLayer.html) now records the [`http.response.status_code`](https://getsentry.github.io/sentry-conventions/attributes/http/) attribute on transactions ([#1253](https://github.com/getsentry/sentry-rust/pull/1253)).
+
+### Deprecations
+
+- Deprecated [`Transaction::is_sampled`](https://docs.rs/sentry-core/0.49.3/sentry_core/struct.Transaction.html#method.is_sampled), [`Span::is_sampled`](https://docs.rs/sentry-core/0.49.3/sentry_core/struct.Span.html#method.is_sampled), and [`TransactionOrSpan::is_sampled`](https://docs.rs/sentry-core/0.49.3/sentry_core/enum.TransactionOrSpan.html#method.is_sampled). These methods cannot distinguish between an unsampled transaction or span and a deferred sampling decision when tracing is disabled ([#1293](https://github.com/getsentry/sentry-rust/pull/1293)).
+
+### Fixes
+
+- Corrected disabled tracing behavior: transactions and spans are ignored without generating discarded-data client reports, and locally started traces leave the sampling decision unset rather than marking the trace as unsampled. Incoming sampling decisions are preserved in outgoing `sentry-trace` headers without enabling local capture. An explicit `0.0` trace sample rate remains distinct from disabled tracing and continues to generate client reports for locally unsampled transactions ([#1286](https://github.com/getsentry/sentry-rust/pull/1286)).
+
+## 0.49.2
+
+### Fixes
+
+- Fix a bug that prevented the Curl transport from respecting Sentry rate limits ([#1279](https://github.com/getsentry/sentry-rust/pull/1279)).
+
+### Deprecations
+
+- Deprecated [`ClientOptions::enable_logs`](https://docs.rs/sentry-core/0.49.2/sentry_core/struct.ClientOptions.html#method.enable_logs). The option no longer disables manually captured logs (via the logging APIs); it now only disables automatic log capture by the log-capturing integrations (`tracing` and `log` with the `logs` feature). To stop an integration from sending logs, configure it via its own options ([#1299](https://github.com/getsentry/sentry-rust/pull/1299)).
+- Deprecated [`ClientOptions::enable_metrics`](https://docs.rs/sentry-core/0.49.2/sentry_core/struct.ClientOptions.html#method.enable_metrics). The option is now a no-op; metrics are always enabled. To stop sending metrics, stop calling the metrics APIs ([#1300](https://github.com/getsentry/sentry-rust/pull/1300)).
+
 ## 0.49.1
 
 ### Fixes
 
 - Preserve floating-point fields in tracing logs as numeric attributes ([#1278](https://github.com/getsentry/sentry-rust/pull/1278)).
-- Fix a bug that prevented the Curl transport from respecting Sentry rate limits ([#1279](https://github.com/getsentry/sentry-rust/pull/1279)).
 
 ## 0.49.0
 

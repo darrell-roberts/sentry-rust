@@ -1,3 +1,4 @@
+#![expect(missing_docs, reason = "predates lint enforcement")]
 #![cfg(feature = "test")]
 
 // Test `log` integration <> Sentry structured logging.
@@ -11,7 +12,7 @@ fn test_log_logs() {
         .map(|()| log::set_max_level(log::LevelFilter::Trace))
         .unwrap();
 
-    let options = sentry::ClientOptions::new().enable_logs(true);
+    let options = sentry::ClientOptions::new();
 
     let envelopes = sentry::test::with_captured_envelopes_options(
         || {

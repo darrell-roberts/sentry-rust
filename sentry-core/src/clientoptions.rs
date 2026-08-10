@@ -1,5 +1,6 @@
 use std::borrow::Cow;
 use std::fmt;
+use std::num::NonZeroUsize;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -11,6 +12,9 @@ use crate::{Integration, IntoDsn, TransportFactory};
 
 /// Type alias for before event/breadcrumb handlers.
 pub type BeforeCallback<T> = Arc<dyn Fn(T) -> Option<T> + Send + Sync>;
+
+/// Type alias for override sample rate callback.
+pub type OverrideSamplingRateCallback = Arc<dyn Fn(&Event<'static>) -> Option<f32> + Send + Sync>;
 
 /// The Session Mode of the SDK.
 ///
@@ -220,6 +224,8 @@ pub struct ClientOptions {
     ///
     /// See [`before_breadcrumb`](method@ClientOptions::before_breadcrumb) for details.
     pub before_breadcrumb: Option<BeforeCallback<Breadcrumb>>,
+    /// Callback allowing for setting sampling rate based on user defined function.
+    pub override_sampling_rate: Option<OverrideSamplingRateCallback>,
     /// Callback that is executed for each Log being added.
     ///
     /// See [`before_send_log`](method@ClientOptions::before_send_log) for details.
@@ -245,13 +251,30 @@ pub struct ClientOptions {
     ///
     /// See [`max_request_body_size`](method@ClientOptions::max_request_body_size) for details.
     pub max_request_body_size: MaxRequestBodySize,
-    /// Whether captured structured logs should be sent to Sentry.
+    /// The maximum number of commands the transport channel can queue.
     ///
-    /// See [`enable_logs`](method@ClientOptions::enable_logs) for details.
+    /// The channel primarily carries envelopes, which are sent to Sentry on a background thread.
+    /// If the channel is full — for example, in high-throughput scenarios — new envelopes are
+    /// dropped and recorded as queue-overflow client reports, so increasing this value trades
+    /// memory usage for reliability. Control commands, such as flushing and shutdown, also count
+    /// against this capacity.
+    ///
+    /// If left unset, each transport uses its own default. The current default is `30` for all
+    /// built-in transports, but this is subject to change.
+    ///
+    /// See [`transport_channel_capacity`](method@ClientOptions::transport_channel_capacity).
+    pub transport_channel_capacity: Option<NonZeroUsize>,
+    /// Deprecated. Setting this to `false` only disables automatic log capture by the
+    /// log-capturing integrations (`log` and `tracing` with the `logs` feature); it does not
+    /// disable logs captured manually via [`Hub::capture_log`](crate::Hub::capture_log) and the
+    /// `logger_*` macros. Defaults to `true`.
+    ///
+    /// To stop an integration from sending logs, use its own options to configure what it
+    /// captures.
+    #[deprecated = "logs captured manually are always sent; only automatic capture by integrations respects this option"]
     pub enable_logs: bool,
-    /// Whether metric capture APIs should capture metrics.
-    ///
-    /// See [`enable_metrics`](method@ClientOptions::enable_metrics) for details.
+    /// Deprecated no-op. Metrics are always enabled, regardless of this option's value.
+    #[deprecated = "this option is a deprecated no-op"]
     pub enable_metrics: bool,
     /// Callback that is executed for each [`Metric`] before sending.
     ///
@@ -580,6 +603,24 @@ impl ClientOptions {
         }
     }
 
+    /// Sets the [callback](field@ClientOptions::override_sampling_rate) that is used to override the
+    /// sampling rate.
+    ///
+    /// The callback receives the event and returns the sampling rate to use for it, in the
+    /// range `[0.0, 1.0]`. Returning `None` or `NaN` falls back to the rate from
+    /// [`event_sampling_strategy`](field@ClientOptions::event_sampling_strategy). Values
+    /// outside the range are treated as `0.0` (never send) or `1.0` (always send).
+    #[inline]
+    pub fn override_sampling_rate(
+        self,
+        override_func: impl Fn(&Event<'static>) -> Option<f32> + Send + Sync + 'static,
+    ) -> Self {
+        Self {
+            override_sampling_rate: Some(Arc::new(override_func)),
+            ..self
+        }
+    }
+
     /// Sets the [callback](field@ClientOptions::before_send_log) that is executed before sending
     /// each log.
     #[cfg(feature = "logs")]
@@ -676,23 +717,53 @@ impl ClientOptions {
         }
     }
 
-    /// Enables or disables sending [structured logs](field@ClientOptions::enable_logs).
+    /// Sets the
+    /// [transport channel capacity](field@ClientOptions::transport_channel_capacity).
     ///
-    /// The `logs` feature is required to capture logs. Defaults to `true`.
+    /// The smallest usable channel capacity is `1`. If `0` is passed, the capacity is clamped
+    /// to `1` and a debug message is emitted.
+    #[inline]
+    pub fn transport_channel_capacity(self, transport_channel_capacity: usize) -> Self {
+        #[cfg_attr(not(feature = "client"), expect(clippy::unnecessary_lazy_evaluations))]
+        let transport_channel_capacity = NonZeroUsize::new(transport_channel_capacity)
+            .unwrap_or_else(|| {
+                #[cfg(feature = "client")]
+                sentry_debug!("cannot set transport channel capacity to 0; clamping to 1");
+                NonZeroUsize::MIN
+            })
+            .into();
+        Self {
+            transport_channel_capacity,
+            ..self
+        }
+    }
+
+    /// Deprecated. Setting [`enable_logs`](field@ClientOptions::enable_logs) to `false` only
+    /// disables automatic log capture by the log-capturing integrations (`log` and `tracing`
+    /// with the `logs` feature); it does not disable logs captured manually via
+    /// [`Hub::capture_log`](crate::Hub::capture_log) and the `logger_*` macros.
+    ///
+    /// To stop an integration from sending logs, use its own options to configure what it
+    /// captures. Alternatively, use [`Self::before_send_log`] to filter logs.
+    #[deprecated = "logs captured manually are always sent; only automatic capture by integrations respects this option"]
     #[inline]
     pub fn enable_logs(self, enable_logs: bool) -> Self {
         Self {
+            #[expect(deprecated, reason = "need to set deprecated field")]
             enable_logs,
             ..self
         }
     }
 
-    /// Enables or disables [metric capture APIs](field@ClientOptions::enable_metrics).
+    /// This function is a no-op, as it sets the deprecated field
+    /// [`enable_metrics`](field@ClientOptions::enable_metrics). Metrics are always enabled.
     ///
-    /// The `metrics` feature is required to capture metrics. Defaults to `true`.
+    /// To stop sending metrics, simply remove any calls to our metrics APIs.
+    #[deprecated = "this function sets a no-op option"]
     #[inline]
     pub fn enable_metrics(self, enable_metrics: bool) -> Self {
         Self {
+            #[expect(deprecated, reason = "need to set deprecated field")]
             enable_metrics,
             ..self
         }
@@ -773,6 +844,12 @@ impl fmt::Debug for ClientOptions {
         struct BeforeSend;
         let before_send = self.before_send.as_ref().map(|_| BeforeSend);
         #[derive(Debug)]
+        struct OverrideSamplingRate;
+        let override_sampling_rate = self
+            .override_sampling_rate
+            .as_ref()
+            .map(|_| OverrideSamplingRate);
+        #[derive(Debug)]
         struct BeforeBreadcrumb;
         let before_breadcrumb = self.before_breadcrumb.as_ref().map(|_| BeforeBreadcrumb);
         let before_send_log = {
@@ -807,17 +884,30 @@ impl fmt::Debug for ClientOptions {
             .field("integrations", &integrations)
             .field("default_integrations", &self.default_integrations)
             .field("before_send", &before_send)
+            .field("override_sampling_rate", &override_sampling_rate)
             .field("before_breadcrumb", &before_breadcrumb)
             .field("transport", &TransportFactory)
             .field("http_proxy", &self.http_proxy)
             .field("https_proxy", &self.https_proxy)
             .field("shutdown_timeout", &self.shutdown_timeout)
+            .field(
+                "transport_channel_capacity",
+                &self.transport_channel_capacity,
+            )
             .field("accept_invalid_certs", &self.accept_invalid_certs)
             .field("auto_session_tracking", &self.auto_session_tracking)
             .field("session_mode", &self.session_mode)
-            .field("enable_logs", &self.enable_logs)
+            .field(
+                "enable_logs",
+                #[expect(deprecated, reason = "still need to debug-log this field")]
+                &self.enable_logs,
+            )
             .field("before_send_log", &before_send_log)
-            .field("enable_metrics", &self.enable_metrics)
+            .field(
+                "enable_metrics",
+                #[expect(deprecated, reason = "still need to debug-log this field")]
+                &self.enable_metrics,
+            )
             .field("before_send_metric", &before_send_metric)
             .field("org_id", &self.org_id)
             .field("strict_trace_continuation", &self.strict_trace_continuation)
@@ -856,10 +946,14 @@ impl Default for ClientOptions {
             session_mode: SessionMode::Application,
             user_agent: Cow::Borrowed(USER_AGENT),
             max_request_body_size: MaxRequestBodySize::Medium,
+            transport_channel_capacity: None,
+            #[expect(deprecated, reason = "still need to set deprecated fields")]
             enable_logs: true,
             before_send_log: None,
+            #[expect(deprecated, reason = "still need to set deprecated fields")]
             enable_metrics: true,
             before_send_metric: None,
+            override_sampling_rate: None,
         }
     }
 }

@@ -69,8 +69,6 @@
 
 #![doc(html_favicon_url = "https://sentry-brand.storage.googleapis.com/favicon.ico")]
 #![doc(html_logo_url = "https://sentry-brand.storage.googleapis.com/sentry-glyph-black.png")]
-#![warn(missing_docs)]
-#![allow(deprecated)]
 #![allow(clippy::type_complexity)]
 
 use std::borrow::Cow;
@@ -403,11 +401,11 @@ fn map_status(status: StatusCode) -> protocol::SpanStatus {
         StatusCode::FORBIDDEN => protocol::SpanStatus::PermissionDenied,
         StatusCode::NOT_FOUND => protocol::SpanStatus::NotFound,
         StatusCode::TOO_MANY_REQUESTS => protocol::SpanStatus::ResourceExhausted,
+        StatusCode::CONFLICT => protocol::SpanStatus::AlreadyExists,
         status if status.is_client_error() => protocol::SpanStatus::InvalidArgument,
         StatusCode::NOT_IMPLEMENTED => protocol::SpanStatus::Unimplemented,
         StatusCode::SERVICE_UNAVAILABLE => protocol::SpanStatus::Unavailable,
         status if status.is_server_error() => protocol::SpanStatus::InternalError,
-        StatusCode::CONFLICT => protocol::SpanStatus::AlreadyExists,
         status if status.is_success() => protocol::SpanStatus::Ok,
         _ => protocol::SpanStatus::UnknownError,
     }
@@ -444,7 +442,7 @@ fn sentry_request_from_http(request: &ServiceRequest, with_pii: bool) -> Request
 
     // If PII is enabled, include the remote address
     if with_pii {
-        if let Some(remote) = request.connection_info().remote_addr() {
+        if let Some(remote) = request.connection_info().peer_addr() {
             sentry_req.env.insert("REMOTE_ADDR".into(), remote.into());
         }
     };
@@ -907,5 +905,17 @@ mod tests {
                 join_all(futures).await;
             })
         });
+    }
+
+    #[test]
+    fn map_status_conflict_to_already_exists() {
+        assert_eq!(
+            map_status(StatusCode::CONFLICT),
+            protocol::SpanStatus::AlreadyExists
+        );
+        assert_eq!(
+            map_status(StatusCode::BAD_REQUEST),
+            protocol::SpanStatus::InvalidArgument
+        );
     }
 }

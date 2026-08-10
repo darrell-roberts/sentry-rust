@@ -13,7 +13,9 @@ mod session_impl {
     use std::collections::HashMap;
     use std::sync::{Arc, Condvar, Mutex, MutexGuard};
     use std::thread::JoinHandle;
-    use std::time::{Duration, Instant, SystemTime};
+    use std::time::{Duration, SystemTime};
+
+    use sentry_time::now_system_time;
 
     use crate::client::EnvelopeSender;
     use crate::clientoptions::SessionMode;
@@ -31,7 +33,7 @@ mod session_impl {
     pub struct Session {
         client: Arc<Client>,
         session_update: SessionUpdate<'static>,
-        started: Instant,
+        started: sentry_time::Instant,
         dirty: bool,
     }
 
@@ -64,7 +66,7 @@ mod session_impl {
                     distinct_id,
                     sequence: None,
                     timestamp: None,
-                    started: SystemTime::now(),
+                    started: now_system_time(),
                     init: true,
                     duration: None,
                     status: SessionStatus::Ok,
@@ -76,7 +78,7 @@ mod session_impl {
                         user_agent: None,
                     },
                 },
-                started: Instant::now(),
+                started: sentry_time::Instant::now(),
                 dirty: true,
             })
         }
@@ -215,7 +217,7 @@ mod session_impl {
                     if *shutdown {
                         return;
                     }
-                    let mut last_flush = Instant::now();
+                    let mut last_flush = sentry_time::Instant::now();
                     loop {
                         let timeout = FLUSH_INTERVAL
                             .checked_sub(last_flush.elapsed())
@@ -231,7 +233,7 @@ mod session_impl {
                             worker_queue.lock().unwrap(),
                             &worker_envelope_sender,
                         );
-                        last_flush = Instant::now();
+                        last_flush = sentry_time::Instant::now()
                     }
                 })
                 .unwrap();

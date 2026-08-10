@@ -1,6 +1,10 @@
 <p align="center">
   <a href="https://sentry.io/?utm_source=github&utm_medium=logo" target="_blank">
-    <img src="https://sentry-brand.storage.googleapis.com/sentry-wordmark-dark-280x84.png" alt="Sentry" width="280" height="84">
+    <picture>
+      <source srcset="https://sentry-brand.storage.googleapis.com/sentry-logo-white.png" media="(prefers-color-scheme: dark)" />
+      <source srcset="https://sentry-brand.storage.googleapis.com/sentry-wordmark-dark-280x84.png" media="(prefers-color-scheme: light), (prefers-color-scheme: no-preference)" />
+      <img src="https://sentry-brand.storage.googleapis.com/sentry-wordmark-dark-280x84.png" alt="Sentry" width="280">
+    </picture>
   </a>
 </p>
 
@@ -60,6 +64,12 @@ This workspace contains various crates that provide support for logging events a
 
   An integration for the `log` and `env_logger` crate.
 
+- [sentry-minidump](./sentry-minidump)
+  [![crates.io](https://img.shields.io/crates/v/sentry-minidump.svg)](https://crates.io/crates/sentry-minidump)
+  [![docs.rs](https://docs.rs/sentry-minidump/badge.svg)](https://docs.rs/sentry-minidump)
+
+  An integration for capturing native crashes as minidumps.
+
 - [sentry-opentelemetry](./sentry-opentelemetry)
   [![crates.io](https://img.shields.io/crates/v/sentry-opentelemetry.svg)](https://crates.io/crates/sentry-opentelemetry)
   [![docs.rs](https://docs.rs/sentry-opentelemetry/badge.svg)](https://docs.rs/sentry-opentelemetry) 
@@ -96,10 +106,10 @@ best API and adding new features.
 
 ## Requirements
 
-We currently only verify this crate against a recent version of Sentry hosted on [sentry.io](https://sentry.io/) but it
-should work with on-prem Sentry versions 20.6 and later.
+We currently only verify this crate against a recent version of Sentry hosted on [sentry.io](https://sentry.io/), but it
+should also work with recent self-hosted Sentry versions.
 
-The **Minimum Supported Rust Version** is currently at _1.88.0_.
+The **Minimum Supported Rust Version** is currently at _1.89.0_.
 The Sentry crates tries to support a _6 months_ old Rust version at time of release,
 and the MSRV will be increased in accordance with its dependencies.
 

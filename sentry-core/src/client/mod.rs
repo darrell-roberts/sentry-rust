@@ -114,18 +114,10 @@ impl Clone for Client {
         )));
 
         #[cfg(feature = "logs")]
-        let logs_batcher = RwLock::new(if self.options.enable_logs {
-            Some(Batcher::new(envelope_sender.clone()))
-        } else {
-            None
-        });
+        let logs_batcher = RwLock::new(Some(Batcher::new(envelope_sender.clone())));
 
         #[cfg(feature = "metrics")]
-        let metrics_batcher = RwLock::new(
-            self.options
-                .enable_metrics
-                .then(|| Batcher::new(envelope_sender.clone())),
-        );
+        let metrics_batcher = RwLock::new(Some(Batcher::new(envelope_sender.clone())));
 
         Client {
             options: self.options.clone(),
@@ -203,18 +195,10 @@ impl Client {
         )));
 
         #[cfg(feature = "logs")]
-        let logs_batcher = RwLock::new(if options.enable_logs {
-            Some(Batcher::new(envelope_sender.clone()))
-        } else {
-            None
-        });
+        let logs_batcher = RwLock::new(Some(Batcher::new(envelope_sender.clone())));
 
         #[cfg(feature = "metrics")]
-        let metrics_batcher = RwLock::new(
-            options
-                .enable_metrics
-                .then(|| Batcher::new(envelope_sender.clone())),
-        );
+        let metrics_batcher = RwLock::new(Some(Batcher::new(envelope_sender.clone())));
 
         let client = Client {
             options,
@@ -397,8 +381,15 @@ impl Client {
             scope.update_session_from_event(&event);
         }
 
-        let sample_rate = event_sample_rate(&self.options.event_sampling_strategy);
-        if !self.sample_should_send(sample_rate) {
+        let sampling_rate = self
+            .options()
+            .override_sampling_rate
+            .as_ref()
+            .and_then(|f| f(&event))
+            .filter(|sampling_rate| !sampling_rate.is_nan())
+            .unwrap_or_else(|| event_sample_rate(&self.options.event_sampling_strategy));
+
+        if !self.sample_should_send(sampling_rate) {
             self.record_lost_event(ClientReportReason::SampleRate);
             None
         } else {
@@ -559,10 +550,6 @@ impl Client {
     /// Captures a log and sends it to Sentry.
     #[cfg(feature = "logs")]
     pub fn capture_log(&self, log: Log, scope: &Scope) {
-        if !self.options.enable_logs {
-            sentry_debug!("[Client] called capture_log, but options.enable_logs is set to false");
-            return;
-        }
         if let Some(log) = self.prepare_log(log, scope) {
             if let Some(ref batcher) = *self.logs_batcher.read().unwrap() {
                 batcher.enqueue(log);
@@ -599,11 +586,6 @@ impl Client {
     /// Captures a metric and sends it to Sentry.
     #[cfg(feature = "metrics")]
     pub fn capture_metric<M: IntoProtocolMetric>(&self, metric: M, scope: &Scope) {
-        if !self.options.enable_metrics {
-            // Skip preparing the metric if we don't send it anyways.
-            return;
-        }
-
         if let Some(metric) = self.prepare_metric(metric, scope) {
             if let Some(batcher) = self
                 .metrics_batcher
@@ -656,6 +638,7 @@ fn build_envelope_sender(client_options: &ClientOptions) -> EnvelopeSender {
         http_proxy,
         https_proxy,
         accept_invalid_certs,
+        transport_channel_capacity,
         ..
     } = client_options;
 
@@ -668,6 +651,7 @@ fn build_envelope_sender(client_options: &ClientOptions) -> EnvelopeSender {
                 https_proxy: https_proxy.clone(),
                 accept_invalid_certs: *accept_invalid_certs,
                 client_report_recorder,
+                transport_channel_capacity: *transport_channel_capacity,
             };
 
             transport_factory.create_transport_with_options(options)

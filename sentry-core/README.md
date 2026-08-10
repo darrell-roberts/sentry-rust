@@ -1,6 +1,10 @@
 <p align="center">
   <a href="https://sentry.io/?utm_source=github&utm_medium=logo" target="_blank">
-    <img src="https://sentry-brand.storage.googleapis.com/sentry-wordmark-dark-280x84.png" alt="Sentry" width="280" height="84">
+    <picture>
+      <source srcset="https://sentry-brand.storage.googleapis.com/sentry-logo-white.png" media="(prefers-color-scheme: dark)" />
+      <source srcset="https://sentry-brand.storage.googleapis.com/sentry-wordmark-dark-280x84.png" media="(prefers-color-scheme: light), (prefers-color-scheme: no-preference)" />
+      <img src="https://sentry-brand.storage.googleapis.com/sentry-wordmark-dark-280x84.png" alt="Sentry" width="280">
+    </picture>
   </a>
 </p>
 
@@ -99,7 +103,7 @@ functionality.
 [Sentry]: https://sentry.io/
 [`sentry`]: https://crates.io/crates/sentry
 [Unified API]: https://develop.sentry.dev/sdk/unified-api/
-[`test`]: https://docs.rs/sentry-core/0.49.1/sentry_core/test/index.html
+[`test`]: https://docs.rs/sentry-core/0.49.6/sentry_core/test/index.html
 
 ## Resources
 

@@ -4,7 +4,7 @@
 
 use std::sync::{Arc, Condvar, Mutex, MutexGuard};
 use std::thread::JoinHandle;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use super::EnvelopeSender;
 use crate::protocol::EnvelopeItem;
@@ -79,7 +79,7 @@ where
                 if *shutdown {
                     return;
                 }
-                let mut last_flush = Instant::now();
+                let mut last_flush = sentry_time::Instant::now();
                 loop {
                     let timeout = FLUSH_INTERVAL
                         .checked_sub(last_flush.elapsed())
@@ -93,7 +93,7 @@ where
                             worker_queue.lock().unwrap(),
                             &worker_envelope_sender,
                         );
-                        last_flush = Instant::now();
+                        last_flush = sentry_time::Instant::now();
                     }
                 }
             })
@@ -177,7 +177,7 @@ mod tests {
                     logger_info!("test log {}", i);
                 }
             },
-            crate::ClientOptions::new().enable_logs(true),
+            crate::ClientOptions::new(),
         );
 
         assert_eq!(2, envelopes.len());
@@ -206,7 +206,7 @@ mod tests {
                     logger_info!("test log {}", i);
                 }
             },
-            crate::ClientOptions::new().enable_logs(true),
+            crate::ClientOptions::new(),
         );
 
         assert_eq!(1, envelopes.len());

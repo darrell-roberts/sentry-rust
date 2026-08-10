@@ -1,6 +1,6 @@
 [package]
 name = "sentry"
-version = "0.49.1"
+version = "0.49.6"
 authors = { workspace = true }
 license = "MIT"
 readme = "README.md"
@@ -41,6 +41,7 @@ anyhow = ["sentry-anyhow"]
 actix = ["sentry-actix"]
 debug-images = ["sentry-debug-images"]
 log = ["sentry-log"]
+minidump = ["dep:sentry-minidump"]
 slog = ["sentry-slog"]
 tower = ["sentry-tower"]
 tower-http = ["tower", "sentry-tower/http"]
@@ -52,6 +53,9 @@ test = ["sentry-core/test"]
 release-health = ["sentry-core/release-health", "sentry-actix?/release-health"]
 logs = ["sentry-core/logs", "sentry-tracing?/logs", "sentry-log?/logs"]
 metrics = ["sentry-core/metrics"]
+# Deprecated no-op feature, to be removed in the next breaking release
+# (https://github.com/getsentry/sentry-rust/issues/1387).
+serde_json = []
 # transports
 transport = ["reqwest", "native-tls"]
 reqwest = ["dep:reqwest", "httpdate", "tokio"]
@@ -83,12 +87,15 @@ sentry-opentelemetry = { workspace = true, optional = true }
 reqwest = { workspace = true, features = ["blocking", "json"], optional = true }
 curl = { workspace = true, optional = true }
 httpdate = { workspace = true, optional = true }
-serde_json = { workspace = true, optional = true }
 tokio = { workspace = true, features = ["rt"], optional = true }
 ureq = { workspace = true, optional = true }
 native-tls = { workspace = true, optional = true }
 rustls = { workspace = true, optional = true }
 embedded-svc = { workspace = true, optional = true }
+# `minidumper-child` only builds on these platforms, so gate the optional
+# dependency. On other targets the `minidump` feature resolves to nothing.
+[target.'cfg(any(target_os = "linux", target_os = "macos", target_os = "windows"))'.dependencies]
+sentry-minidump = { workspace = true, optional = true }
 [target.'cfg(target_os = "espidf")'.dependencies]
 esp-idf-svc = { workspace = true, optional = true }
 
@@ -96,10 +103,11 @@ esp-idf-svc = { workspace = true, optional = true }
 sentry-anyhow = { workspace = true }
 sentry-log = { workspace = true }
 sentry-slog = { workspace = true }
-sentry-tower = { workspace = true }
+sentry-tower = { workspace = true, features = ["http"] }
 sentry-tracing = { workspace = true }
 actix-web = { workspace = true }
 anyhow = { workspace = true }
+http = { workspace = true }
 log = { workspace = true, features = ["std"] }
 pretty_env_logger = { workspace = true }
 slog = { workspace = true }
