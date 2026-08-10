@@ -3432,6 +3432,7 @@ dependencies = [
  "rand 0.9.5",
  "rayon",
  "sentry",
+ "sentry-time",
  "sentry-types",
  "serde",
  "serde_json",
@@ -3458,6 +3459,7 @@ dependencies = [
  "pretty_env_logger",
  "sentry",
  "sentry-core",
+ "sentry-time",
 ]
 
 [[package]]
@@ -3468,6 +3470,7 @@ dependencies = [
  "opentelemetry_sdk",
  "sentry",
  "sentry-core",
+ "sentry-time",
 ]
 
 [[package]]
@@ -3489,6 +3492,13 @@ dependencies = [
  "serde",
  "serde_json",
  "slog",
+]
+
+[[package]]
+name = "sentry-time"
+version = "0.49.1"
+dependencies = [
+ "web-time",
 ]
 
 [[package]]
@@ -3520,6 +3530,7 @@ dependencies = [
  "sentry",
  "sentry-backtrace",
  "sentry-core",
+ "sentry-time",
  "serde_json",
  "tokio",
  "tracing",
@@ -3535,6 +3546,7 @@ dependencies = [
  "hex",
  "rand 0.9.5",
  "rstest",
+ "sentry-time",
  "serde",
  "serde_json",
  "thiserror 2.0.19",
